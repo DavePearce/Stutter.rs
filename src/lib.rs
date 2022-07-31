@@ -9,7 +9,20 @@ pub enum Output<S, T> {
 }
 
 impl<S, T> Output<S, T> {
-    //
+    pub fn is_more(&self) -> bool {
+        match self {
+            Output::More(_) => true,
+            Output::Done(_) => false,
+        }
+    }
+
+    pub fn is_done(&self) -> bool {
+        match self {
+            Output::More(_) => false,
+            Output::Done(_) => true,
+        }
+    }
+
     pub fn more(self) -> S {
         match self {
             Output::More(s) => s,
@@ -18,13 +31,23 @@ impl<S, T> Output<S, T> {
             }
         }
     }
-    //
+
     pub fn done(self) -> T {
         match self {
             Output::More(_) => {
                 panic!("computation is not yet done!");
             }
             Output::Done(t) => t,
+        }
+    }
+
+    pub fn done_or_apply<F>(self, f: F) -> Output<S, T>
+    where
+        F: Fn(S) -> S,
+    {
+        match self {
+            Output::More(t) => Output::More(f(t)),
+            _ => self,
         }
     }
 }
