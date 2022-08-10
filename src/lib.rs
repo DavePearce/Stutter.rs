@@ -9,13 +9,14 @@ pub enum Output<S, T> {
 }
 
 impl<S, T> Output<S, T> {
+    /// Check whether there are more steps to go, or not.
     pub fn is_more(&self) -> bool {
         match self {
             Output::More(_) => true,
             Output::Done(_) => false,
         }
     }
-
+    /// Check whether computation is done, or not.
     pub fn is_done(&self) -> bool {
         match self {
             Output::More(_) => false,
@@ -23,6 +24,8 @@ impl<S, T> Output<S, T> {
         }
     }
 
+    /// Assuming computation has not finished, extract the current
+    /// state.
     pub fn more(self) -> S {
         match self {
             Output::More(s) => s,
@@ -32,6 +35,7 @@ impl<S, T> Output<S, T> {
         }
     }
 
+    /// Assuming computation has finished, extract the terminal state.
     pub fn done(self) -> T {
         match self {
             Output::More(_) => {
@@ -41,6 +45,8 @@ impl<S, T> Output<S, T> {
         }
     }
 
+    /// Apply a given function to the current state if the computation
+    /// is still ongoing, otherwise do nothing.
     pub fn done_or_apply<F>(self, f: F) -> Output<S, T>
     where
         F: Fn(S) -> S,

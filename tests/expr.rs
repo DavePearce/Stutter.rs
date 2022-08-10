@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::convert::From;
 /// A simple example illustrating a steppable computation of the kind
 /// this library was designed for.
 use std::fmt;
@@ -60,6 +61,7 @@ impl fmt::Display for Value {
 // ====================================================================
 
 /// A simple expression tree.
+#[derive(Clone)]
 enum Expr {
     Value(Value),
     IntLiteral(i64),
@@ -80,6 +82,16 @@ impl fmt::Display for Expr {
             Expr::Neg(e) => write!(f, "-({})", e),
             Expr::Add(l, r) => write!(f, "({}+{})", l, r),
             Expr::Sub(l, r) => write!(f, "({}-{})", l, r),
+        }
+    }
+}
+
+/// Convert the output of a step back into an expression.
+impl From<Output<Expr, Value>> for Expr {
+    fn from(o: Output<Expr, Value>) -> Self {
+        match o {
+            Output::Done(v) => Expr::Value(v),
+            Output::More(e) => e,
         }
     }
 }
@@ -106,6 +118,44 @@ impl Environment {
     pub fn set(mut self, var: &str, value: Value) -> Self {
         self.bindings.insert(var.to_string(), value);
         self
+    }
+
+    /// Evaluate a sequence of zero or more expressions by exactly one step.
+    pub fn step_nary<M, D>(&self, es: &[Box<Expr>], more: M, done: D) -> Output<Expr, Value>
+    where
+        M: Fn(&[Box<Expr>]) -> Expr,
+        D: Fn(&[Value]) -> Value,
+    {
+        for i in 0..es.len() {
+            let ith = &*es[i];
+            match *ith {
+                // Operand already a value, so skip.
+                Expr::Value(v) => {}
+                // Operan not yet a value, so reduce.
+                _ => {
+                    // FIXME: avoid the clone!
+                    let r = Expr::from(self.step(ith.clone()));
+                    // FIXME: avoid cloning to vec!
+                    let vs = es.to_vec();
+                    // Done
+                    return Output::More(more(&vs));
+                }
+            }
+        }
+        // If we get here, then ready to produce value (or be stuck).
+        let mut vals = Vec::new();
+        for e in es {
+            match **e {
+                Expr::Value(v) => {
+                    vals.push(v);
+                }
+                _ => {
+                    panic!("dead code reached");
+                }
+            }
+        }
+        // Done
+        done(&vals).stuck_or_more()
     }
 
     /// Evaluate a unary expression by one step.  This manages the
